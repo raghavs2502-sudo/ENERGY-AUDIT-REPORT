@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Home Energy Audit Report & Generator</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+            .print-shadow { box-shadow: none !important; border: 1px solid #cbd5e1 !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-16">
+
+    <!-- Top Action Bar -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-50 no-print">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl font-bold flex items-center gap-2">
+                    ⚡ EnergyAudit Pro <span class="text-xs bg-emerald-600 px-2 py-0.5 rounded-full uppercase tracking-wider">Interactive Generator</span>
+                </h1>
+                <p class="text-xs text-slate-400">Dynamic Home Energy Audit & Conservation Calculator</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="resetDefaults()" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-2 rounded font-medium transition">Reset Defaults</button>
+                <button onclick="calculateAll()" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-4 py-2 rounded font-semibold transition shadow">Recalculate Totals</button>
+                <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-500 text-xs px-4 py-2 rounded font-semibold transition shadow flex items-center gap-1.5">
+                    🖨️ Save as PDF / Print
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+
+        <!-- Report Header Section -->
+        <section class="bg-white rounded-xl shadow-sm p-6 sm:p-8 border border-slate-200 print-shadow">
+            <div class="border-b border-slate-200 pb-6 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">HOME ENERGY AUDIT REPORT</h2>
+                    <p class="text-sm text-slate-500">Comprehensive Load Analysis & Conservation Strategy</p>
+                </div>
+                <div class="text-right text-sm">
+                    <p><span class="font-semibold">Date:</span> <input type="date" id="auditDate" class="border border-slate-300 rounded px-2 py-1 text-xs" value="2026-10-24"></p>
+                    <p class="mt-1"><span class="font-semibold">Audit Period:</span> <input type="text" id="auditPeriod" class="border border-slate-300 rounded px-2 py-1 text-xs" value="June 2026 – August 2026"></p>
+                </div>
+            </div>
+
+            <!-- General Profile Inputs -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Building Type</label>
+                    <input type="text" id="buildingType" value="Residential Single-Family Home" class="w-full border border-slate-300 rounded-lg p-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Built Area (sq. ft.)</label>
+                    <input type="number" id="builtArea" value="1200" class="w-full border border-slate-300 rounded-lg p-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Occupants</label>
+                    <input type="number" id="occupants" value="4" class="w-full border border-slate-300 rounded-lg p-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Tariff Rate (per kWh)</label>
+                    <input type="number" step="0.1" id="tariffRate" value="8.0" class="w-full border border-slate-300 rounded-lg p-2 text-sm" oninput="calculateAll()">
+                </div>
+            </div>
+        </section>
+
+        <!-- Appliance Inventory Section -->
+        <section class="bg-white rounded-xl shadow-sm p-6 sm:p-8 border border-slate-200 print-shadow">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900">1. Major Electrical Appliance Inventory</h3>
+                    <p class="text-xs text-slate-500">Edit wattage, quantity, or daily usage hours to dynamically recalculate consumption.</p>
+                </div>
+                <button onclick="addApplianceRow()" class="no-print bg-slate-900 hover:bg-slate-800 text-white text-xs px-3 py-1.5 rounded font-medium">+ Add Appliance</button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table id="applianceTable" class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-700 uppercase text-xs tracking-wider border-b border-slate-200">
+                            <th class="p-3">Category / Appliance</th>
+                            <th class="p-3">Wattage (W)</th>
+                            <th class="p-3">Qty</th>
+                            <th class="p-3">Daily Use (hrs)</th>
+                            <th class="p-3">Monthly Energy (kWh)</th>
+                            <th class="p-3 no-print">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <!-- Rows injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div>
+                    <p class="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Total Calculated Monthly Consumption</p>
+                    <p class="text-2xl font-black text-emerald-900" id="totalMonthlyKwh">0 kWh</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Estimated Monthly Electricity Bill</p>
+                    <p class="text-2xl font-black text-emerald-900" id="totalMonthlyBill">₹0</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Visualization & Statistics Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Historical Billing -->
+            <section class="bg-white rounded-xl shadow-sm p-6 sm:p-8 border border-slate-200 print-shadow">
+                <h3 class="text-lg font-bold text-slate-900 mb-2">2. Historical Billing Statistics</h3>
+                <p class="text-xs text-slate-500 mb-4">Past 6 months recorded utility data.</p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 uppercase text-xs tracking-wider border-b border-slate-200">
+                                <th class="p-3">Month</th>
+                                <th class="p-3">Units (kWh)</th>
+                                <th class="p-3">Bill Amount (₹)</th>
+                                <th class="p-3">Primary Factor</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-xs">
+                            <tr><td class="p-3 font-medium">May 2026</td><td class="p-3">580</td><td class="p-3">₹4,640</td><td class="p-3 text-slate-500">High AC Usage</td></tr>
+                            <tr><td class="p-3 font-medium">Jun 2026</td><td class="p-3">640</td><td class="p-3">₹5,120</td><td class="p-3 text-slate-500">Peak Summer Load</td></tr>
+                            <tr><td class="p-3 font-medium">Jul 2026</td><td class="p-3">610</td><td class="p-3">₹4,880</td><td class="p-3 text-slate-500">High AC & Fan Usage</td></tr>
+                            <tr><td class="p-3 font-medium">Aug 2026</td><td class="p-3">480</td><td class="p-3">₹3,840</td><td class="p-3 text-slate-500">Moderate Weather</td></tr>
+                            <tr><td class="p-3 font-medium">Sep 2026</td><td class="p-3">410</td><td class="p-3">₹3,280</td><td class="p-3 text-slate-500">Monsoon / Reduced AC</td></tr>
+                            <tr><td class="p-3 font-medium">Oct 2026</td><td class="p-3">390</td><td class="p-3">₹3,120</td><td class="p-3 text-slate-500">Lower Ambient Temp</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Consumption Breakdown Chart -->
+            <section class="bg-white rounded-xl shadow-sm p-6 sm:p-8 border border-slate-200 print-shadow flex flex-col justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900 mb-1">3. Load Share Breakdown</h3>
+                    <p class="text-xs text-slate-500 mb-4">Proportional energy utilization by category.</p>
+                </div>
+                <div class="relative w-full h-64 flex justify-center items-center">
+                    <canvas id="loadChart"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <!-- Energy Conservation Measures (ECMs) -->
+        <section class="bg-white rounded-xl shadow-sm p-6 sm:p-8 border border-slate-200 print-shadow">
+            <h3 class="text-lg font-bold text-slate-900 mb-2">4. Energy Conservation Measures (ECMs) & Payback</h3>
+            <p class="text-xs text-slate-500 mb-6">Select proposed retrofits to calculate cumulative savings.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- ECM 1 -->
+                <div class="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Cooling</span>
+                            <h4 class="font-bold text-slate-800 mt-1">Upgrade AC Setpoint to 24°C</h4>
+                            <p class="text-xs text-slate-600 mt-1">Saves ~6% power per degree rise from 20°C.</p>
+                        </div>
+                        <input type="checkbox" id="ecm1" class="w-5 h-5 accent-blue-600 mt-1 cursor-pointer" checked onchange="calculateAll()">
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-200 flex justify-between text-xs font-medium">
+                        <span class="text-slate-500">Monthly Savings: <strong class="text-emerald-700">~40 kWh (~₹320)</strong></span>
+                        <span class="text-slate-500">Payback: <strong class="text-slate-800">Immediate</strong></span>
+                    </div>
+                </div>
+
+                <!-- ECM 2 -->
+                <div class="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Fans</span>
+                            <h4 class="font-bold text-slate-800 mt-1">Replace 4 Fans with BLDC Fans</h4>
+                            <p class="text-xs text-slate-600 mt-1">Reduces fan wattage from 75W to 30W.</p>
+                        </div>
+                        <input type="checkbox" id="ecm2" class="w-5 h-5 accent-blue-600 mt-1 cursor-pointer" checked onchange="calculateAll()">
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-200 flex justify-between text-xs font-medium">
+                        <span class="text-slate-500">Monthly Savings: <strong class="text-emerald-700">~54 kWh (~₹432)</strong></span>
+                        <span class="text-slate-500">Payback: <strong class="text-slate-800">14–18 Months</strong></span>
+                    </div>
+                </div>
+
+                <!-- ECM 3 -->
+                <div class="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Lighting</span>
+                            <h4 class="font-bold text-slate-800 mt-1">Transition 100% to LED Battens</h4>
+                            <p class="text-xs text-slate-600 mt-1">Replace old 40W tubes with 18W LEDs.</p>
+                        </div>
+                        <input type="checkbox" id="ecm3" class="w-5 h-5 accent-blue-600 mt-1 cursor-pointer" checked onchange="calculateAll()">
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-200 flex justify-between text-xs font-medium">
+                        <span class="text-slate-500">Monthly Savings: <strong class="text-emerald-700">~22 kWh (~₹176)</strong></span>
+                        <span class="text-slate-500">Payback: <strong class="text-slate-800">4–6 Months</strong></span>
+                    </div>
+                </div>
+
+                <!-- ECM 4 -->
+                <div class="border border-slate-200 rounded-lg p-4 bg-slate-50">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Passive Thermal</span>
+                            <h4 class="font-bold text-slate-800 mt-1">Solar Window Film & Roof Coating</h4>
+                            <p class="text-xs text-slate-600 mt-1">Lowers solar heat gain coefficient (SHGC).</p>
+                        </div>
+                        <input type="checkbox" id="ecm4" class="w-5 h-5 accent-blue-600 mt-1 cursor-pointer" checked onchange="calculateAll()">
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-200 flex justify-between text-xs font-medium">
+                        <span class="text-slate-500">Monthly Savings: <strong class="text-emerald-700">~25 kWh (~₹200)</strong></span>
+                        <span class="text-slate-500">Payback: <strong class="text-slate-800">10–12 Months</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Savings Summary Banner -->
+            <div class="mt-6 p-5 bg-slate-900 text-white rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div>
+                    <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Total Projected Monthly Savings with Selected ECMs</p>
+                    <p class="text-3xl font-black text-emerald-400" id="projectedSavingsKwh">0 kWh / mo</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Projected Monthly Financial Savings</p>
+                    <p class="text-3xl font-black text-emerald-400" id="projectedSavingsRupees">₹0 / mo</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Conclusion & Action Plan -->
+        <section class="bg-white rounded-xl shadow-sm p-6 sm:p-8 border border-slate-200 print-shadow">
+            <h3 class="text-lg font-bold text-slate-900 mb-3">5. Conclusion & Immediate Action Plan</h3>
+            <ul class="list-disc list-inside space-y-2 text-sm text-slate-700">
+                <li>Immediate thermostat optimization to <strong>24°C</strong> to eliminate thermal waste.</li>
+                <li>Phased replacement of conventional ceiling fans with <strong>BLDC models</strong> over the upcoming quarter.</li>
+                <li>Complete transition of all legacy lighting to high-efficiency <strong>LED battens</strong>.</li>
+                <li>Implementation of passive thermal shading on high solar exposure windows.</li>
+            </ul>
+        </section>
+
+    </main>
+
+    <!-- Script to Handle Live Calculations & Chart -->
+    <script>
+        let defaultAppliances = [
+            { category: "Cooling (1.5 Ton AC)", wattage: 1600, qty: 1, hours: 7 },
+            { category: "Conventional Ceiling Fans", wattage: 75, qty: 4, hours: 12 },
+            { category: "Conventional Tube Lights", wattage: 40, qty: 6, hours: 6 },
+            { category: "LED Bulbs", wattage: 9, qty: 5, hours: 5 },
+            { category: "Water Submersible Pump", wattage: 750, qty: 1, hours: 1 },
+            { category: "Refrigerator (Single Door)", wattage: 150, qty: 1, hours: 12 },
+            { category: "Entertainment & IT (TV/Router)", wattage: 120, qty: 1, hours: 8 },
+            { category: "Other Miscellaneous Loads", wattage: 200, qty: 1, hours: 5 }
+        ];
+
+        let loadChartInstance = null;
+
+        function loadTable() {
+            let tbody = document.querySelector("#applianceTable tbody");
+            tbody.innerHTML = "";
+            defaultAppliances.forEach((item, index) => {
+                let monthlyKwh = (item.wattage * item.qty * item.hours * 30) / 1000;
+                let row = document.createElement("tr");
+                row.className = "border-b border-slate-100 hover:bg-slate-50";
+                row.innerHTML = `
+                    <td class="p-3"><input type="text" value="${item.category}" class="w-full bg-transparent border-b border-transparent focus:border-slate-400 outline-none" onchange="updateAppliance(${index}, 'category', this.value)"></td>
+                    <td class="p-3"><input type="number" value="${item.wattage}" class="w-20 bg-transparent border-b border-transparent focus:border-slate-400 outline-none" onchange="updateAppliance(${index}, 'wattage', this.value)"></td>
+                    <td class="p-3"><input type="number" value="${item.qty}" class="w-16 bg-transparent border-b border-transparent focus:border-slate-400 outline-none" onchange="updateAppliance(${index}, 'qty', this.value)"></td>
+                    <td class="p-3"><input type="number" step="0.5" value="${item.hours}" class="w-16 bg-transparent border-b border-transparent focus:border-slate-400 outline-none" onchange="updateAppliance(${index}, 'hours', this.value)"></td>
+                    <td class="p-3 font-semibold text-slate-700 monthly-kwh">${monthlyKwh.toFixed(1)} kWh</td>
+                    <td class="p-3 no-print"><button onclick="removeRow(${index})" class="text-red-500 hover:text-red-700 text-xs font-bold">✕</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+            calculateAll();
+        }
+
+        function updateAppliance(index, field, value) {
+            defaultAppliances[index][field] = field === 'category' ? value : parseFloat(value) || 0;
+            calculateAll();
+        }
+
+        function addApplianceRow() {
+            defaultAppliances.push({ category: "New Appliance", wattage: 100, qty: 1, hours: 2 });
+            loadTable();
+        }
+
+        function removeRow(index) {
+            defaultAppliances.splice(index, 1);
+            loadTable();
+        }
+
+        function resetDefaults() {
+            defaultAppliances = [
+                { category: "Cooling (1.5 Ton AC)", wattage: 1600, qty: 1, hours: 7 },
+                { category: "Conventional Ceiling Fans", wattage: 75, qty: 4, hours: 12 },
+                { category: "Conventional Tube Lights", wattage: 40, qty: 6, hours: 6 },
+                { category: "LED Bulbs", wattage: 9, qty: 5, hours: 5 },
+                { category: "Water Submersible Pump", wattage: 750, qty: 1, hours: 1 },
+                { category: "Refrigerator (Single Door)", wattage: 150, qty: 1, hours: 12 },
+                { category: "Entertainment & IT (TV/Router)", wattage: 120, qty: 1, hours: 8 },
+                { category: "Other Miscellaneous Loads", wattage: 200, qty: 1, hours: 5 }
+            ];
+            loadTable();
+        }
+
+        function calculateAll() {
+            let tariff = parseFloat(document.getElementById("tariffRate").value) || 8.0;
+            let totalKwh = 0;
+            let categories = [];
+            let kwhValues = [];
+
+            let rows = document.querySelectorAll("#applianceTable tbody tr");
+            rows.forEach((row, index) => {
+                let item = defaultAppliances[index];
+                if (!item) return;
+                let monthlyKwh = (item.wattage * item.qty * item.hours * 30) / 1000;
+                totalKwh += monthlyKwh;
+                row.querySelector(".monthly-kwh").innerText = monthlyKwh.toFixed(1) + " kWh";
+                categories.push(item.category);
+                kwhValues.push(monthlyKwh);
+            });
+
+            let totalBill = totalKwh * tariff;
+            document.getElementById("totalMonthlyKwh").innerText = totalKwh.toFixed(1) + " kWh";
+            document.getElementById("totalMonthlyBill").innerText = "₹" + totalBill.toLocaleString('en-IN', {maximumFractionDigits: 0});
+
+            // Calculate ECM Savings
+            let savingsKwh = 0;
+            if (document.getElementById("ecm1").checked) savingsKwh += 40;
+            if (document.getElementById("ecm2").checked) savingsKwh += 54;
+            if (document.getElementById("ecm3").checked) savingsKwh += 22;
+            if (document.getElementById("ecm4").checked) savingsKwh += 25;
+
+            let savingsRupees = savingsKwh * tariff;
+            document.getElementById("projectedSavingsKwh").innerText = savingsKwh + " kWh / mo";
+            document.getElementById("projectedSavingsRupees").innerText = "₹" + savingsRupees.toLocaleString('en-IN', {maximumFractionDigits: 0}) + " / mo";
+
+            updateChart(categories, kwhValues);
+        }
+
+        function updateChart(labels, data) {
+            const ctx = document.getElementById('loadChart').getContext('2d');
+            if (loadChartInstance) {
+                loadChartInstance.destroy();
+            }
+            loadChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
+                            '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 12, font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initial load
+        window.onload = loadTable;
+    </script>
+</body>
+</html>
